@@ -46,11 +46,18 @@ def find_source_files(repo_path: str) -> list[str]:
     return source_files    
 
 
-def read_source_file(repo_path: str, relative_path: str) -> str:
+def read_source_file(repo_path: str, relative_path: str) -> list[tuple[int, str]]:
     root = Path(repo_path)
     file_path = root / relative_path
     
-    return file_path.read_text(encoding="utf-8")
+    text = file_path.read_text(encoding="utf-8")
+    lines = text.splitlines()
+    output = []
+    
+    for line_number, line in enumerate(lines, start=1):
+        output.append((line_number, line))
+        
+    return output
 
 
 if __name__ == "__main__":
@@ -58,8 +65,13 @@ if __name__ == "__main__":
         "https://github.com/nartnek/RiftPredict",
         "data/repos",
     )
+    # python src/threadmark/repository.py 
 
     source_files = find_source_files(repo_path)
     first_file = source_files[0]
-    print(f"Reading: {first_file}")
-    print(read_source_file(repo_path, first_file))
+    source_code = read_source_file(repo_path, first_file)
+
+    source = read_source_file(repo_path, source_files[0])
+
+    for line_number, line in source:
+        print(f"{line_number}: {line}")
