@@ -17,9 +17,16 @@ EVAL_CASES = [
     ),
 
     EvalCase(
-        query="How does the crawler restore its progress after being restarted?",
+        query="How does the crawler restore its saved traversal progress?",
         expected_file="src/data_collection/collect_matches.py",
         expected_start_line=444,
+        expected_end_line=458,
+    ),
+
+    EvalCase(
+        query="What happens if the crawler was interrupted while processing a player?",
+        expected_file="src/data_collection/collect_matches.py",
+        expected_start_line=462,
         expected_end_line=479,
     ),
 
@@ -28,6 +35,62 @@ EVAL_CASES = [
         expected_file="src/data_collection/collect_matches.py",
         expected_start_line=618,
         expected_end_line=628,
+    ),
+    
+    EvalCase(
+    query="What happens when the Riot API returns a temporary server error?",
+    expected_file="src/data_collection/collect_matches.py",
+    expected_start_line=62,
+    expected_end_line=69,
+),
+
+    EvalCase(
+        query="What happens when the Riot API key is invalid or expired?",
+        expected_file="src/data_collection/collect_matches.py",
+        expected_start_line=71,
+        expected_end_line=74,
+    ),
+
+    EvalCase(
+        query="How are previously collected matches loaded when collection resumes?",
+        expected_file="src/data_collection/collect_matches.py",
+        expected_start_line=227,
+        expected_end_line=247,
+    ),
+
+    EvalCase(
+        query="How does the crawler save its traversal state safely?",
+        expected_file="src/data_collection/collect_matches.py",
+        expected_start_line=316,
+        expected_end_line=335,
+    ),
+
+    EvalCase(
+        query="What happens to the current player if the API key expires during collection?",
+        expected_file="src/data_collection/collect_matches.py",
+        expected_start_line=559,
+        expected_end_line=577,
+    ),
+
+    EvalCase(
+        query="How does the crawler discover new players from downloaded matches?",
+        expected_file="src/data_collection/collect_matches.py",
+        expected_start_line=669,
+        expected_end_line=690,
+    ),
+
+    EvalCase(
+        query="What happens when a downloaded match is incomplete or invalid?",
+        expected_file="src/data_collection/collect_matches.py",
+        expected_start_line=697,
+        expected_end_line=707,
+    ),
+
+    EvalCase(
+        query="How does the crawler periodically checkpoint its progress?",
+        expected_file="src/data_collection/collect_matches.py",
+        expected_start_line=712,
+        expected_end_line=725,
     ),
 ]
 
@@ -60,6 +123,8 @@ from threadmark.retrieval import (
     MODEL_NAME,
     embed_chunks,
     search_chunks,
+    search_chunks_hybrid,
+    search_chunks_bm25,
 )
 
 if __name__ == "__main__":
@@ -75,7 +140,21 @@ if __name__ == "__main__":
     summary = []
 
     for case in EVAL_CASES:
-        all_results = search_chunks(
+        semantic_results = search_chunks(
+            case.query,
+            chunks,
+            embeddings,
+            model,
+            top_k=len(chunks),
+        )
+        
+        bm25_results = search_chunks_bm25(
+            case.query,
+            chunks,
+            top_k=len(chunks),
+        )
+        
+        hybrid_results = search_chunks_hybrid(
             case.query,
             chunks,
             embeddings,
@@ -83,23 +162,46 @@ if __name__ == "__main__":
             top_k=len(chunks),
         )
 
-        full_rank = find_relevant_rank(all_results, case)
+        semantic_rank = find_relevant_rank(
+            semantic_results,
+            case,
+        )
+        
+        bm25_rank = find_relevant_rank(
+            bm25_results,
+            case,
+        )
+
+        hybrid_rank = find_relevant_rank(
+            hybrid_results,
+            case,
+        )
 
         summary.append(
             (
                 case.query,
-                full_rank,
+                semantic_rank,
+                bm25_rank,
+                hybrid_rank,
             )
         )
 
-    print("\n=== RETRIEVAL SUMMARY ===")
+    print("\n=== RETRIEVAL COMPARISON ===")
 
-    for query, rank in summary:
-        if rank is None:
-            print(f"MISS | {query}")
-        else:
-            print(
-                f"Rank {rank:>3} | "
-                f"Top-5: {'HIT' if rank <= 5 else 'MISS'} | "
-                f"{query}"
-            )
+    for query, semantic_rank, bm25_rank, hybrid_rank in summary:
+        print(f"\n{query}")
+
+        print(
+            f"  Semantic: "
+            f"{'MISS' if semantic_rank is None else f'Rank {semantic_rank}'}"
+        )
+
+        print(
+            f"  BM25:     "
+            f"{'MISS' if bm25_rank is None else f'Rank {bm25_rank}'}"
+        )
+
+        print(
+            f"  Hybrid:   "
+            f"{'MISS' if hybrid_rank is None else f'Rank {hybrid_rank}'}"
+        )
