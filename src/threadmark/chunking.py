@@ -71,12 +71,14 @@ def chunk_repository(repo_path: str) -> list[CodeChunk]:
     return all_chunks
 
 
+
+
+# PYTHONPATH=src python -m threadmark.chunking
 if __name__ == "__main__":
     repo_path = clone_repository(
         "https://github.com/nartnek/RiftPredict",
         "data/repos",
     )
-    # PYTHONPATH=src python -m threadmark.chunking
 
     chunks = chunk_repository(repo_path)
 

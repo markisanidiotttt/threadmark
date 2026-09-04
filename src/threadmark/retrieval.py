@@ -67,9 +67,12 @@ def search_chunks(
     
 
 
+
+
+# PYTHONPATH=src python -m threadmark.retrieval
 from threadmark.repository import clone_repository
 from threadmark.chunking import chunk_repository
-# PYTHONPATH=src python -m threadmark.retrieval
+
 
 if __name__ == "__main__":
     repo_path = clone_repository(

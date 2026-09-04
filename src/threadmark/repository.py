@@ -60,12 +60,15 @@ def read_source_file(repo_path: str, relative_path: str) -> list[tuple[int, str]
     return output
 
 
+
+
+
+# python src/threadmark/repository.py 
 if __name__ == "__main__":
     repo_path = clone_repository(
         "https://github.com/nartnek/RiftPredict",
         "data/repos",
     )
-    # python src/threadmark/repository.py 
 
     source_files = find_source_files(repo_path)
     first_file = source_files[0]
