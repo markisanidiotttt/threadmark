@@ -188,24 +188,6 @@ def evaluate_chunking(
             top_k=len(hybrid_candidates),
         )
         
-        
-            ###TEMP
-        if case.query == "How does the crawler periodically checkpoint its progress?":
-            print("\n=== RERANK DEBUG ===")
-
-            for rank, result in enumerate(reranked_results[:10], start=1):
-                chunk = result.chunk
-
-                print(f"\n--- Rank {rank} | Score {result.score:.4f} ---")
-                print(
-                    f"{chunk.file_path}:"
-                    f"{chunk.start_line}-{chunk.end_line}"
-                )
-                print(f"Symbol: {chunk.symbol_name}")
-                print(chunk.content)
-        
-        
-        
         reranked_rank = find_relevant_rank(
             reranked_results,
             case,

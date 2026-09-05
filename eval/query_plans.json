@@ -1,0 +1,306 @@
+{
+  "What happens when the Riot API returns HTTP status code 429?": {
+    "intent": "Find the handling performed when an HTTP response has status code 429 (rate limiting).",
+    "likely_behaviors": [
+      "predicate_check",
+      "invoke_action",
+      "stop_processing"
+    ],
+    "likely_relations": [
+      {
+        "source": "predicate_check",
+        "target": "invoke_action"
+      },
+      {
+        "source": "invoke_action",
+        "target": "stop_processing"
+      }
+    ],
+    "concepts": [
+      "HTTP 429",
+      "rate limiting",
+      "response status handling",
+      "backoff or retry handling"
+    ]
+  },
+  "How does the crawler restore its saved traversal progress?": {
+    "intent": "Find how the crawler loads persisted traversal state and applies it to resume crawling.",
+    "likely_behaviors": [
+      "invoke_action",
+      "state_assignment",
+      "update_collection"
+    ],
+    "likely_relations": [
+      {
+        "source": "invoke_action",
+        "target": "state_assignment"
+      },
+      {
+        "source": "state_assignment",
+        "target": "update_collection"
+      }
+    ],
+    "concepts": [
+      "saved traversal progress",
+      "checkpoint restoration",
+      "resume state",
+      "crawler state"
+    ]
+  },
+  "What happens if the crawler was interrupted while processing a player?": {
+    "intent": "Determine how player-processing interruption is handled, including whether progress or status is updated before processing stops.",
+    "likely_behaviors": [
+      "stop_processing",
+      "state_assignment",
+      "update_collection",
+      "exit_processing"
+    ],
+    "likely_relations": [
+      {
+        "source": "stop_processing",
+        "target": "state_assignment"
+      },
+      {
+        "source": "state_assignment",
+        "target": "update_collection"
+      },
+      {
+        "source": "update_collection",
+        "target": "exit_processing"
+      }
+    ],
+    "concepts": [
+      "interrupted player",
+      "processing termination",
+      "progress or status persistence",
+      "crawler shutdown"
+    ]
+  },
+  "How does the crawler avoid collecting duplicate match IDs?": {
+    "intent": "Find how the crawler detects already-collected match IDs and prevents them from being collected again.",
+    "likely_behaviors": [
+      "membership_test",
+      "skip_processing",
+      "record_item"
+    ],
+    "likely_relations": [
+      {
+        "source": "membership_test",
+        "target": "skip_processing"
+      },
+      {
+        "source": "membership_test",
+        "target": "record_item"
+      }
+    ],
+    "concepts": [
+      "duplicate match IDs",
+      "deduplication",
+      "already-seen IDs",
+      "crawler collection"
+    ]
+  },
+  "What happens when the Riot API returns a temporary server error?": {
+    "intent": "Find the behavior used to handle a temporary Riot API server error, including whether processing stops, exits with an error, or retries/recoveries are triggered.",
+    "likely_behaviors": [
+      "error_exit",
+      "invoke_action",
+      "state_assignment",
+      "stop_processing"
+    ],
+    "likely_relations": [
+      {
+        "source": "error_exit",
+        "target": "stop_processing"
+      },
+      {
+        "source": "error_exit",
+        "target": "invoke_action"
+      },
+      {
+        "source": "error_exit",
+        "target": "state_assignment"
+      }
+    ],
+    "concepts": [
+      "Riot API",
+      "temporary server error",
+      "error handling",
+      "recovery",
+      "retry",
+      "processing outcome"
+    ]
+  },
+  "What happens when the Riot API key is invalid or expired?": {
+    "intent": "Determine how the program handles an invalid or expired Riot API key.",
+    "likely_behaviors": [
+      "predicate_check",
+      "error_exit"
+    ],
+    "likely_relations": [
+      {
+        "source": "predicate_check",
+        "target": "error_exit"
+      }
+    ],
+    "concepts": [
+      "Riot API authentication failure",
+      "invalid or expired API key",
+      "API error response",
+      "termination on authentication error"
+    ]
+  },
+  "How are previously collected matches loaded when collection resumes?": {
+    "intent": "Find how persisted previously collected matches are restored into the active collection when processing resumes.",
+    "likely_behaviors": [
+      "invoke_action",
+      "update_collection"
+    ],
+    "likely_relations": [
+      {
+        "source": "invoke_action",
+        "target": "update_collection"
+      }
+    ],
+    "concepts": [
+      "resuming collection",
+      "persisted matches",
+      "restoring prior results",
+      "loading saved state"
+    ]
+  },
+  "How does the crawler save its traversal state safely?": {
+    "intent": "Identify how the crawler persists its traversal progress and what triggers or safeguards that persistence.",
+    "likely_behaviors": [
+      "state_assignment",
+      "periodic_trigger",
+      "invoke_action"
+    ],
+    "likely_relations": [
+      {
+        "source": "periodic_trigger",
+        "target": "invoke_action"
+      },
+      {
+        "source": "state_assignment",
+        "target": "invoke_action"
+      }
+    ],
+    "concepts": [
+      "traversal state",
+      "persistence",
+      "safe saving",
+      "checkpointing"
+    ]
+  },
+  "What happens to the current player if the API key expires during collection?": {
+    "intent": "Determine how collection handles the current player when API-key expiration is detected.",
+    "likely_behaviors": [
+      "predicate_check",
+      "skip_processing",
+      "exit_processing"
+    ],
+    "likely_relations": [
+      {
+        "source": "predicate_check",
+        "target": "skip_processing"
+      },
+      {
+        "source": "skip_processing",
+        "target": "exit_processing"
+      }
+    ],
+    "concepts": [
+      "API key expiration",
+      "current player",
+      "collection processing",
+      "error handling"
+    ]
+  },
+  "How does the crawler discover new players from downloaded matches?": {
+    "intent": "Find the behavior by which downloaded match data is examined to identify previously unknown players and add them to the crawler's player collection.",
+    "likely_behaviors": [
+      "invoke_action",
+      "predicate_check",
+      "membership_test",
+      "record_item"
+    ],
+    "likely_relations": [
+      {
+        "source": "invoke_action",
+        "target": "predicate_check"
+      },
+      {
+        "source": "predicate_check",
+        "target": "membership_test"
+      },
+      {
+        "source": "membership_test",
+        "target": "record_item"
+      }
+    ],
+    "concepts": [
+      "downloaded matches",
+      "player discovery",
+      "new players",
+      "player collection"
+    ]
+  },
+  "What happens when a downloaded match is incomplete or invalid?": {
+    "intent": "Find how the program detects an incomplete or invalid downloaded match and what disposition follows.",
+    "likely_behaviors": [
+      "predicate_check",
+      "compound_condition",
+      "skip_processing",
+      "remove_item",
+      "error_exit"
+    ],
+    "likely_relations": [
+      {
+        "source": "predicate_check",
+        "target": "skip_processing"
+      },
+      {
+        "source": "compound_condition",
+        "target": "skip_processing"
+      },
+      {
+        "source": "predicate_check",
+        "target": "remove_item"
+      },
+      {
+        "source": "predicate_check",
+        "target": "error_exit"
+      }
+    ],
+    "concepts": [
+      "downloaded match validation",
+      "incomplete result handling",
+      "invalid result handling",
+      "discarding or skipping bad downloads"
+    ]
+  },
+  "How does the crawler periodically checkpoint its progress?": {
+    "intent": "Find the mechanism that periodically triggers checkpointing and records the crawler's current progress.",
+    "likely_behaviors": [
+      "periodic_trigger",
+      "invoke_action",
+      "state_assignment"
+    ],
+    "likely_relations": [
+      {
+        "source": "periodic_trigger",
+        "target": "invoke_action"
+      },
+      {
+        "source": "invoke_action",
+        "target": "state_assignment"
+      }
+    ],
+    "concepts": [
+      "crawler progress",
+      "periodic checkpoint",
+      "persisted state"
+    ]
+  }
+}

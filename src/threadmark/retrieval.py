@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from threadmark.chunking import CodeChunk
 
 MODEL_NAME = "all-MiniLM-L6-v2"
-RERANKER_MODEL_NAME = "cross-encoder/ms-marco-MiniLM-L6-v2"
+RERANKER_MODEL_NAME = "NamanAgnih0tri/code-reranker-miniLM-staqc"
 
 @dataclass
 class RetrievalResult:
