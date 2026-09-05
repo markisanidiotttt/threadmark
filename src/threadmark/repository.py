@@ -12,7 +12,7 @@ SUPPORTED_EXTENSIONS = {
 
 
 def clone_repository(repo_url: str, destination_root: str) -> str:
-    ## Reads the GitHub repository and clones the repo to a local destination
+    """Clone a Git repository locally and return its repository path."""
     repo_url = repo_url.rstrip("/")
 
     repo_name = repo_url.split("/")[-1] 
@@ -58,23 +58,3 @@ def read_source_file(repo_path: str, relative_path: str) -> list[tuple[int, str]
         output.append((line_number, line))
         
     return output
-
-
-
-
-
-# python src/threadmark/repository.py 
-if __name__ == "__main__":
-    repo_path = clone_repository(
-        "https://github.com/nartnek/RiftPredict",
-        "data/repos",
-    )
-
-    source_files = find_source_files(repo_path)
-    first_file = source_files[0]
-    source_code = read_source_file(repo_path, first_file)
-
-    source = read_source_file(repo_path, source_files[0])
-
-    for line_number, line in source:
-        print(f"{line_number}: {line}")

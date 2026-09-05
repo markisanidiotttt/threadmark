@@ -6,6 +6,7 @@ LLM_MODEL = "gpt-5.6-luna"
 
 
 def generate_answer(prompt: str) -> str:
+    """Send a grounded repository prompt to the LLM and return its response."""
     client = OpenAI()
 
     response = client.responses.create(
@@ -16,7 +17,8 @@ def generate_answer(prompt: str) -> str:
     return response.output_text
 
 
-def build_context(results : list[RetrievalResult]) -> str:
+def build_context(results: list[RetrievalResult]) -> str:
+    """Format retrieved code chunks as numbered repository sources."""
     sections = []
     
     for source_number, result in enumerate(results, start=1):
@@ -33,6 +35,7 @@ def build_context(results : list[RetrievalResult]) -> str:
 
 
 def build_prompt(query: str, context: str) -> str:
+    """Build a grounded code-question-answering prompt from a query and repository context."""
     return f"""
 You are analyzing a software repository.
 
@@ -55,44 +58,3 @@ REPOSITORY SOURCES:
 """.strip()
         
         
-
-        
-# PYTHONPATH=src python -m threadmark.generation
-        
-from sentence_transformers import SentenceTransformer
-
-from threadmark.repository import clone_repository
-from threadmark.chunking import chunk_repository
-from threadmark.retrieval import (
-    MODEL_NAME,
-    embed_chunks,
-    search_chunks,
-)
-
-if __name__ == "__main__":
-    repo_path = clone_repository(
-        "https://github.com/nartnek/RiftPredict",
-        "data/repos",
-    )
-
-    chunks = chunk_repository(repo_path)
-
-    model = SentenceTransformer(MODEL_NAME)
-    embeddings = embed_chunks(chunks, model)
-
-    query = "What happens when the Riot API returns HTTP status code 429?"
-
-    results = search_chunks(
-        query,
-        chunks,
-        embeddings,
-        model,
-    )
-
-context = build_context(results)
-prompt = build_prompt(query, context)
-
-answer = generate_answer(prompt)
-
-print("\nANSWER:\n")
-print(answer)

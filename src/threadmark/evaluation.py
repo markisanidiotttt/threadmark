@@ -1,6 +1,20 @@
 from dataclasses import dataclass
 
 
+EMBEDDING_MODELS = {
+    "MiniLM": {
+        "name": "all-MiniLM-L6-v2",
+        "trust_remote_code": False,
+    },
+    "Jina Code": {
+        "name": "jinaai/jina-embeddings-v2-base-code",
+        "trust_remote_code": True,
+    },
+}
+
+ACTIVE_EMBEDDING_MODEL = "MiniLM"
+
+
 @dataclass
 class EvalCase:
     query: str
@@ -118,42 +132,42 @@ def find_relevant_rank(results, case: EvalCase) -> int | None:
 from sentence_transformers import SentenceTransformer
 
 from threadmark.repository import clone_repository
-from threadmark.chunking import chunk_repository
+from threadmark.chunking import (
+    chunk_repository_fixed,
+    chunk_repository_ast,
+)
 from threadmark.retrieval import (
-    MODEL_NAME,
     embed_chunks,
-    search_chunks,
+    search_chunks_semantic,
     search_chunks_hybrid,
     search_chunks_bm25,
 )
+def evaluate_chunking(
+    label: str,
+    chunks,
+    model,
+):
+    print(f"\n=== CHUNKING: {label} ===")
 
-if __name__ == "__main__":
-    repo_path = clone_repository(
-        "https://github.com/nartnek/RiftPredict",
-        "data/repos",
-    )
-
-    chunks = chunk_repository(repo_path)
-
-    model = SentenceTransformer(MODEL_NAME)
     embeddings = embed_chunks(chunks, model)
+
     summary = []
 
     for case in EVAL_CASES:
-        semantic_results = search_chunks(
+        semantic_results = search_chunks_semantic(
             case.query,
             chunks,
             embeddings,
             model,
             top_k=len(chunks),
         )
-        
+
         bm25_results = search_chunks_bm25(
             case.query,
             chunks,
             top_k=len(chunks),
         )
-        
+
         hybrid_results = search_chunks_hybrid(
             case.query,
             chunks,
@@ -166,7 +180,7 @@ if __name__ == "__main__":
             semantic_results,
             case,
         )
-        
+
         bm25_rank = find_relevant_rank(
             bm25_results,
             case,
@@ -186,22 +200,37 @@ if __name__ == "__main__":
             )
         )
 
-    print("\n=== RETRIEVAL COMPARISON ===")
-
     for query, semantic_rank, bm25_rank, hybrid_rank in summary:
         print(f"\n{query}")
+        print(f"  Semantic: Rank {semantic_rank}")
+        print(f"  BM25:     Rank {bm25_rank}")
+        print(f"  Hybrid:   Rank {hybrid_rank}")
+            
+if __name__ == "__main__":
+    repo_path = clone_repository(
+        "https://github.com/nartnek/RiftPredict",
+        "data/repos",
+    )
 
-        print(
-            f"  Semantic: "
-            f"{'MISS' if semantic_rank is None else f'Rank {semantic_rank}'}"
-        )
+    model_config = EMBEDDING_MODELS[ACTIVE_EMBEDDING_MODEL]
 
-        print(
-            f"  BM25:     "
-            f"{'MISS' if bm25_rank is None else f'Rank {bm25_rank}'}"
-        )
+    model = SentenceTransformer(
+        model_config["name"],
+        trust_remote_code=model_config["trust_remote_code"],
+    )
 
-        print(
-            f"  Hybrid:   "
-            f"{'MISS' if hybrid_rank is None else f'Rank {hybrid_rank}'}"
-        )
+    fixed_chunks = chunk_repository_fixed(repo_path)
+
+    ast_chunks = chunk_repository_ast(repo_path)
+
+    evaluate_chunking(
+        "Fixed Window",
+        fixed_chunks,
+        model,
+    )
+
+    evaluate_chunking(
+        "AST Aware",
+        ast_chunks,
+        model,
+    )

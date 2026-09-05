@@ -18,17 +18,27 @@ def tokenize(text: str) -> list[str]:
 
 
 def chunk_to_text(chunk: CodeChunk) -> str:
-    return (
-        f"File: {chunk.file_path}\n"
-        f"Lines: {chunk.start_line}-{chunk.end_line}\n"
-        f"{chunk.content}"
-    )
+    """Converts list of chunks to one multi-line string"""
+    parts = [
+        f"File: {chunk.file_path}",
+        f"Lines: {chunk.start_line}-{chunk.end_line}",
+    ]
+
+    if chunk.symbol_name is not None:
+        parts.append(
+            f"Symbol: {chunk.symbol_name}"
+        )
+
+    parts.append(chunk.content)
+
+    return "\n".join(parts)
 
     
 def embed_chunks(
     chunks: list[CodeChunk],
     model: SentenceTransformer,
 ):
+    """Embeds vector values to chunks"""
     texts = []
     
     for chunk in chunks:
@@ -42,13 +52,17 @@ def embed_chunks(
     return embeddings
 
 
-def search_chunks(
+
+
+
+def search_chunks_semantic(
     query: str,
     chunks: list[CodeChunk],
     embeddings,
     model: SentenceTransformer,
     top_k: int = 5,
 ) -> list[RetrievalResult]:
+    """Rank code chunks by cosine similarity to the query embedding."""
     
     results = []
     
@@ -77,6 +91,7 @@ def search_chunks_bm25(
     chunks: list[CodeChunk],
     top_k: int = 5,
 ) -> list[RetrievalResult]:
+    """Rank code chunks by bm25 similarity to the query embedding."""
     
     corpus = [
         tokenize(chunk_to_text(chunk))
@@ -110,8 +125,9 @@ def search_chunks_hybrid(
     model: SentenceTransformer,
     top_k: int = 5,
 ) -> list[RetrievalResult]:
+    """Combine semantic and BM25 rankings using reciprocal rank fusion."""
     
-    semantic_results = search_chunks(
+    semantic_results = search_chunks_semantic(
         query,
         chunks,
         embeddings,
@@ -183,44 +199,3 @@ def search_chunks_hybrid(
     
 
 
-
-
-# PYTHONPATH=src python -m threadmark.retrieval
-from threadmark.repository import clone_repository
-from threadmark.chunking import chunk_repository
-
-
-if __name__ == "__main__":
-    repo_path = clone_repository(
-        "https://github.com/nartnek/RiftPredict",
-        "data/repos",
-    )
-
-    chunks = chunk_repository(repo_path)
-
-    model = SentenceTransformer(MODEL_NAME)
-
-    embeddings = embed_chunks(chunks, model)
-
-    query = "What happens when the Riot API returns HTTP status code 429?"
-
-    results = search_chunks_hybrid(
-        query,
-        chunks,
-        embeddings,
-        model,
-    )
-
-    print(f"\nQuery: {query}\n")
-
-    for result in results:
-        chunk = result.chunk
-
-        print(
-            f"\n{result.score:.3f} | "
-            f"{chunk.file_path}:"
-            f"{chunk.start_line}-{chunk.end_line}"
-        )
-
-        print("-" * 60)
-        print(chunk.content)

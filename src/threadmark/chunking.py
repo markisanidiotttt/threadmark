@@ -1,3 +1,4 @@
+import ast
 from dataclasses import dataclass
 from threadmark.repository import (
     clone_repository,
@@ -11,14 +12,17 @@ class CodeChunk:
     start_line: int
     end_line: int
     content: str
+    symbol_name: str | None = None
     
     
-def chunk_source_file(
+def chunk_lines_fixed(
     file_path: str,
     lines: list[tuple[int, str]],
     chunk_size: int = 40,
     overlap: int = 10,
+    symbol_name: str | None = None,
 ) -> list[CodeChunk]:
+    """Breaks input file into a list of fixed-line chunks"""
     
     if overlap >= chunk_size:
         raise ValueError("overlap must be smaller than chunk_size")
@@ -47,6 +51,7 @@ def chunk_source_file(
             start_line=start_line,
             end_line=end_line,
             content=content,
+            symbol_name=symbol_name,
         )
         
         chunks.append(chunk)
@@ -57,14 +62,16 @@ def chunk_source_file(
     return chunks
 
 
-def chunk_repository(repo_path: str) -> list[CodeChunk]:
+def chunk_repository_fixed(repo_path: str) -> list[CodeChunk]:
+    """Chunk Python files using fixed windows."""
+    
     source_files = find_source_files(repo_path)
     
     all_chunks = []
 
     for file_path in source_files:
         lines = read_source_file(repo_path, file_path)
-        file_chunks = chunk_source_file(file_path, lines)
+        file_chunks = chunk_lines_fixed(file_path, lines)
         
         all_chunks.extend(file_chunks)    
     
@@ -73,20 +80,90 @@ def chunk_repository(repo_path: str) -> list[CodeChunk]:
 
 
 
-# PYTHONPATH=src python -m threadmark.chunking
-if __name__ == "__main__":
-    repo_path = clone_repository(
-        "https://github.com/nartnek/RiftPredict",
-        "data/repos",
-    )
+# Chunker with ast-awareness
+def chunk_repository_ast(repo_path: str) -> list[CodeChunk]:
+    """Chunk Python files using AST symbol boundaries and fixed windows for large symbols."""
+    
+    source_files = find_source_files(repo_path)
 
-    chunks = chunk_repository(repo_path)
+    all_chunks = []
 
-    print(f"Total chunks: {len(chunks)}")
-
-    for chunk in chunks:
-        print(
-            f"{chunk.file_path}:"
-            f"{chunk.start_line}-{chunk.end_line}"
+    for file_path in source_files:
+        lines = read_source_file(
+            repo_path,
+            file_path,
         )
+
+        if file_path.endswith(".py"):
+            try:
+                file_chunks = chunk_python_file_ast(
+                    file_path,
+                    lines,
+                )
+            except SyntaxError:
+                file_chunks = chunk_lines_fixed(
+                    file_path,
+                    lines,
+                )
+        else:
+            file_chunks = chunk_lines_fixed(
+                file_path,
+                lines,
+            )
+
+        all_chunks.extend(file_chunks)
+
+    return all_chunks
+
+
+def chunk_python_file_ast(
+    file_path: str,
+    lines: list[tuple[int, str]],
+    chunk_size: int = 40,
+    overlap: int = 10,
+) -> list[CodeChunk]:
+    
+    
+    source = "\n".join(
+        line
+        for _, line in lines
+    )
+    
+    tree = ast.parse(source)
+    
+    chunks = []
+    
+    for node in tree.body:
+        if not isinstance(
+            node,
+            (
+                ast.FunctionDef,
+                ast.AsyncFunctionDef,
+                ast.ClassDef,
+            ),
+        ):
+            continue
+        
+        symbol_lines = lines[
+            node.lineno - 1:
+            node.end_lineno
+        ]
+        
+        if isinstance(node, ast.ClassDef):
+            symbol_name = f"class {node.name}"
+        else:
+            symbol_name = node.name
+            
+        symbol_chunks = chunk_lines_fixed(
+            file_path=file_path,
+            lines=symbol_lines,
+            chunk_size=chunk_size,
+            overlap=overlap,
+            symbol_name=symbol_name,
+        )
+        
+        chunks.extend(symbol_chunks)
+        
+    return chunks
+
     
