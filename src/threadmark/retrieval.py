@@ -1,11 +1,12 @@
 import re
 from rank_bm25 import BM25Okapi
-from sentence_transformers import SentenceTransformer
+from sentence_transformers import SentenceTransformer, CrossEncoder
 from dataclasses import dataclass
 
 from threadmark.chunking import CodeChunk
 
 MODEL_NAME = "all-MiniLM-L6-v2"
+RERANKER_MODEL_NAME = "cross-encoder/ms-marco-MiniLM-L6-v2"
 
 @dataclass
 class RetrievalResult:
@@ -13,8 +14,48 @@ class RetrievalResult:
     score: float
 
 
-def tokenize(text: str) -> list[str]:
+def tokenize_basic(text: str) -> list[str]:
+    """Tokenize text into lowercase alphanumeric terms."""
     return re.findall(r"[A-Za-z0-9]+", text.lower())
+
+def split_identifier(identifier: str) -> list[str]:
+    """Split snake_case and camelCase identifiers into lowercase components"""
+    
+    parts = []
+    
+    for snake_part in identifier.split("_"):
+        camel_parts = re.findall(
+            r"[A-Z]+(?=[A-Z][a-z]|\d|$)|[A-Z]?[a-z]+|\d+",
+            snake_part,
+        )
+
+        parts.extend(
+            part.lower()
+            for part in camel_parts
+        )
+        
+    return parts
+
+
+def tokenize_code_aware(text: str) -> list[str]:
+    """Preserve complete identifiers while also indexing their components."""
+    
+    raw_tokens = re.findall(
+        r"[A-Za-z_][A-Za-z0-9_]*|\d+",
+        text,
+    )
+    
+    tokens = []
+    
+    for raw_token in raw_tokens:
+        normalized = raw_token.lower()
+        tokens.append(normalized)
+        
+        for part in split_identifier(raw_token):
+            if part != normalized:
+                tokens.append(part)
+                
+    return tokens
 
 
 def chunk_to_text(chunk: CodeChunk) -> str:
@@ -38,7 +79,8 @@ def embed_chunks(
     chunks: list[CodeChunk],
     model: SentenceTransformer,
 ):
-    """Embeds vector values to chunks"""
+    """Encode code chunks as normalized embedding vectors."""  
+    
     texts = []
     
     for chunk in chunks:
@@ -91,16 +133,16 @@ def search_chunks_bm25(
     chunks: list[CodeChunk],
     top_k: int = 5,
 ) -> list[RetrievalResult]:
-    """Rank code chunks by bm25 similarity to the query embedding."""
-    
+    """Rank code chunks by BM25 lexical relevance to the query.""" 
+       
     corpus = [
-        tokenize(chunk_to_text(chunk))
+        tokenize_basic(chunk_to_text(chunk))
         for chunk in chunks
     ]
     
     bm25 = BM25Okapi(corpus)
     
-    query_tokens = tokenize(query)
+    query_tokens = tokenize_basic(query)
     scores = bm25.get_scores(query_tokens)
     
     ranked_indices = scores.argsort()[::-1][:top_k]
@@ -197,5 +239,40 @@ def search_chunks_hybrid(
         
     return results
     
+    
+def rerank_results(
+    query: str,
+    results: list[RetrievalResult],
+    reranker: CrossEncoder,
+    top_k: int = 5,
+) -> list[RetrievalResult]:
+    """Rerank retrieved chunks using a cross-encoder relevance model."""
 
+
+    if not results:
+        return []
+    
+    pairs = [
+        (query, chunk_to_text(result.chunk))
+        for result in results
+    ]
+    
+    scores = reranker.predict(pairs)
+    
+    reranked = []
+    
+    for result, score in zip(results, scores):
+        reranked.append(
+            RetrievalResult(
+                chunk=result.chunk,
+                score=float(score),
+            )
+        )
+        
+    reranked.sort(
+        key=lambda result: result.score,
+        reverse=True,
+    )
+    
+    return reranked[:top_k]
 

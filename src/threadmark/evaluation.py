@@ -129,7 +129,7 @@ def find_relevant_rank(results, case: EvalCase) -> int | None:
 
 # PYTHONPATH=src python -m threadmark.evaluation
 
-from sentence_transformers import SentenceTransformer
+from sentence_transformers import SentenceTransformer, CrossEncoder
 
 from threadmark.repository import clone_repository
 from threadmark.chunking import (
@@ -137,15 +137,18 @@ from threadmark.chunking import (
     chunk_repository_ast,
 )
 from threadmark.retrieval import (
+    RERANKER_MODEL_NAME,
     embed_chunks,
     search_chunks_semantic,
     search_chunks_hybrid,
     search_chunks_bm25,
+    rerank_results,
 )
 def evaluate_chunking(
     label: str,
     chunks,
     model,
+    reranker,
 ):
     print(f"\n=== CHUNKING: {label} ===")
 
@@ -175,6 +178,38 @@ def evaluate_chunking(
             model,
             top_k=len(chunks),
         )
+        
+        hybrid_candidates = hybrid_results[:20]
+        
+        reranked_results = rerank_results(
+            case.query,
+            hybrid_candidates,
+            reranker,
+            top_k=len(hybrid_candidates),
+        )
+        
+        
+            ###TEMP
+        if case.query == "How does the crawler periodically checkpoint its progress?":
+            print("\n=== RERANK DEBUG ===")
+
+            for rank, result in enumerate(reranked_results[:10], start=1):
+                chunk = result.chunk
+
+                print(f"\n--- Rank {rank} | Score {result.score:.4f} ---")
+                print(
+                    f"{chunk.file_path}:"
+                    f"{chunk.start_line}-{chunk.end_line}"
+                )
+                print(f"Symbol: {chunk.symbol_name}")
+                print(chunk.content)
+        
+        
+        
+        reranked_rank = find_relevant_rank(
+            reranked_results,
+            case,
+        )
 
         semantic_rank = find_relevant_rank(
             semantic_results,
@@ -197,14 +232,22 @@ def evaluate_chunking(
                 semantic_rank,
                 bm25_rank,
                 hybrid_rank,
+                reranked_rank,
             )
         )
 
-    for query, semantic_rank, bm25_rank, hybrid_rank in summary:
+    for (
+        query, 
+        semantic_rank, 
+        bm25_rank, 
+        hybrid_rank, 
+        reranked_rank,
+    ) in summary:
         print(f"\n{query}")
         print(f"  Semantic: Rank {semantic_rank}")
         print(f"  BM25:     Rank {bm25_rank}")
         print(f"  Hybrid:   Rank {hybrid_rank}")
+        print(f"  Reranked: Rank {reranked_rank}")
             
 if __name__ == "__main__":
     repo_path = clone_repository(
@@ -219,18 +262,21 @@ if __name__ == "__main__":
         trust_remote_code=model_config["trust_remote_code"],
     )
 
-    fixed_chunks = chunk_repository_fixed(repo_path)
+    reranker = CrossEncoder(RERANKER_MODEL_NAME)
 
+    fixed_chunks = chunk_repository_fixed(repo_path)
     ast_chunks = chunk_repository_ast(repo_path)
 
     evaluate_chunking(
         "Fixed Window",
         fixed_chunks,
         model,
+        reranker,
     )
 
     evaluate_chunking(
         "AST Aware",
         ast_chunks,
         model,
+        reranker,
     )
